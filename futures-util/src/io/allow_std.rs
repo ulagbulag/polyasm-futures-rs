@@ -1,9 +1,7 @@
+use std::{fmt, io, pin::Pin, ptr, string::String, vec::Vec};
+
 use futures_core::task::{Context, Poll};
 use futures_io::{AsyncBufRead, AsyncRead, AsyncSeek, AsyncWrite, IoSlice, IoSliceMut, SeekFrom};
-use std::pin::Pin;
-use std::string::String;
-use std::vec::Vec;
-use std::{fmt, io};
 
 /// A simple wrapper type which allows types which implement only
 /// `std::io::Read` or `std::io::Write` to be used
@@ -192,7 +190,7 @@ where
     T: io::BufRead,
 {
     fn poll_fill_buf(mut self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<io::Result<&[u8]>> {
-        let this: *mut Self = &mut *self as *mut _;
+        let this: *mut Self = ptr::from_mut(&mut *self);
         Poll::Ready(Ok(try_with_interrupt!(unsafe { &mut *this }.0.fill_buf())))
     }
 

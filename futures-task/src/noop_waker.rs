@@ -1,6 +1,6 @@
 //! Utilities for creating zero-cost wakers that don't do anything.
 
-use core::ptr::null;
+use core::ptr::{from_ref, null};
 use core::task::{RawWaker, RawWakerVTable, Waker};
 
 #[inline(always)]
@@ -50,7 +50,7 @@ pub fn noop_waker_ref() -> &'static Waker {
     static NOOP_WAKER_INSTANCE: SyncRawWaker = SyncRawWaker(noop_raw_waker());
 
     // SAFETY: `Waker` is #[repr(transparent)] over its `RawWaker`.
-    unsafe { &*(&NOOP_WAKER_INSTANCE.0 as *const RawWaker as *const Waker) }
+    unsafe { &*from_ref(&NOOP_WAKER_INSTANCE.0).cast::<Waker>() }
 }
 
 #[cfg(test)]

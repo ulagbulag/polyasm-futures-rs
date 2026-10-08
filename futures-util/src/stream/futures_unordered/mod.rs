@@ -141,7 +141,7 @@ impl<Fut> FuturesUnordered<Fut> {
         let stub_ptr = Arc::as_ptr(&stub);
         let ready_to_run_queue = Arc::new(ReadyToRunQueue {
             waker: AtomicWaker::new(),
-            head: AtomicPtr::new(stub_ptr as *mut _),
+            head: AtomicPtr::new(stub_ptr.cast_mut()),
             tail: UnsafeCell::new(stub_ptr),
             stub,
         });
@@ -309,7 +309,7 @@ impl<Fut> FuturesUnordered<Fut> {
 
         // Atomically swap out the old head node to get the node that should be
         // assigned to `next_all`.
-        let next = self.head_all.swap(ptr as *mut _, AcqRel);
+        let next = self.head_all.swap(ptr.cast_mut(), AcqRel);
 
         unsafe {
             // Store the new list length in the new node.
@@ -401,7 +401,7 @@ impl<Fut> FuturesUnordered<Fut> {
         // The `ReadyToRunQueue` stub is never inserted into the `head_all`
         // list, and its pointer value will remain valid for the lifetime of
         // this `FuturesUnordered`, so we can make use of its value here.
-        Arc::as_ptr(&self.ready_to_run_queue.stub) as *mut _
+        Arc::as_ptr(&self.ready_to_run_queue.stub).cast_mut()
     }
 }
 
@@ -545,7 +545,7 @@ impl<Fut: Future> Stream for FuturesUnordered<Fut> {
                     let task = bomb.task.take().unwrap();
                     // If the future was awoken during polling, we assume
                     // the future wanted to explicitly yield.
-                    yielded += task.woken.load(Relaxed) as usize;
+                    yielded += usize::from(task.woken.load(Relaxed));
                     bomb.queue.link(task);
 
                     // If a future yields, we respect it and yield here.
