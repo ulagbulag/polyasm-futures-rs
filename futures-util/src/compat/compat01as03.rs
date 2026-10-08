@@ -333,7 +333,7 @@ impl From<WakerToHandle<'_>> for NotifyHandle01 {
         let waker_ptr: Box<task03::Waker> = Box::new(handle.0.clone());
         // NotifyWaker is a transparent (pointer compatible) wrapper for
         // task03::Waker (and wrapping in UnsafeCell is fine).
-        let ptr: *mut NotifyWaker = Box::into_raw(waker_ptr) as *mut NotifyWaker;
+        let ptr: *mut NotifyWaker = Box::into_raw(waker_ptr).cast::<NotifyWaker>();
 
         unsafe { Self::new(ptr) }
     }

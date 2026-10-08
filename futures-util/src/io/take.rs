@@ -2,6 +2,7 @@ use futures_core::ready;
 use futures_core::task::{Context, Poll};
 use futures_io::{AsyncBufRead, AsyncRead};
 use pin_project_lite::pin_project;
+use std::convert::TryFrom;
 use std::pin::Pin;
 use std::{cmp, io};
 
@@ -93,7 +94,10 @@ impl<R: AsyncRead> AsyncRead for Take<R> {
             return Poll::Ready(Ok(0));
         }
 
-        let max = cmp::min(buf.len() as u64, *this.limit) as usize;
+        let max = match usize::try_from(*this.limit) {
+            Ok(limit) => cmp::min(buf.len(), limit),
+            Err(_) => buf.len(),
+        };
         let n = ready!(this.inner.poll_read(cx, &mut buf[..max]))?;
         *this.limit -= n as u64;
         Poll::Ready(Ok(n))
@@ -110,7 +114,10 @@ impl<R: AsyncBufRead> AsyncBufRead for Take<R> {
         }
 
         let buf = ready!(this.inner.poll_fill_buf(cx)?);
-        let cap = cmp::min(buf.len() as u64, *this.limit) as usize;
+        let cap = match usize::try_from(*this.limit) {
+            Ok(limit) => cmp::min(buf.len(), limit),
+            Err(_) => buf.len(),
+        };
         Poll::Ready(Ok(&buf[..cap]))
     }
 
@@ -118,7 +125,10 @@ impl<R: AsyncBufRead> AsyncBufRead for Take<R> {
         let this = self.project();
 
         // Don't let callers reset the limit by passing an overlarge value
-        let amt = cmp::min(amt as u64, *this.limit) as usize;
+        let amt = match usize::try_from(*this.limit) {
+            Ok(limit) => cmp::min(amt, limit),
+            Err(_) => amt,
+        };
         *this.limit -= amt as u64;
         this.inner.consume(amt);
     }

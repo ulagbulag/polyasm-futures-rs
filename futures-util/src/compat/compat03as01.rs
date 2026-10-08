@@ -13,7 +13,7 @@ use futures_core::{
 use futures_sink::Sink as Sink03;
 #[cfg(feature = "sink")]
 use std::marker::PhantomData;
-use std::{mem, pin::Pin, sync::Arc, task::Context};
+use std::{mem, pin::Pin, ptr, sync::Arc, task::Context};
 
 #[allow(clippy::too_long_first_doc_paragraph)] // clippy bug, see https://github.com/rust-lang/rust-clippy/issues/13315
 /// Converts a futures 0.3 [`TryFuture`](futures_core::future::TryFuture) or
@@ -157,10 +157,10 @@ impl Current {
 
     fn as_waker(&self) -> WakerRef<'_> {
         unsafe fn ptr_to_current<'a>(ptr: *const ()) -> &'a Current {
-            unsafe { &*(ptr as *const Current) }
+            unsafe { &*ptr.cast::<Current>() }
         }
         fn current_to_ptr(current: &Current) -> *const () {
-            current as *const Current as *const ()
+            ptr::from_ref(current).cast::<()>()
         }
 
         #[inline(always)]

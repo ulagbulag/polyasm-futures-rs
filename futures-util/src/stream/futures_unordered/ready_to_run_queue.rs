@@ -38,7 +38,7 @@ impl<Fut> ReadyToRunQueue<Fut> {
             (*task).next_ready_to_run.store(ptr::null_mut(), Relaxed);
 
             // Note that these atomic orderings come from 1024cores
-            let task = task as *mut _;
+            let task = task.cast_mut();
             let prev = self.head.swap(task, AcqRel);
             (*prev).next_ready_to_run.store(task, Release);
         }

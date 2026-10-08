@@ -5,6 +5,7 @@ use futures_core::task::{Context, Poll};
 use futures_io::{AsyncBufRead, AsyncRead, AsyncSeek, AsyncWrite, IoSliceMut, SeekFrom};
 use pin_project_lite::pin_project;
 use std::boxed::Box;
+use std::convert::TryFrom;
 use std::io::{self, Read};
 use std::pin::Pin;
 use std::vec;
@@ -91,16 +92,21 @@ impl<R: AsyncRead + AsyncSeek> BufReader<R> {
         cx: &mut Context<'_>,
         offset: i64,
     ) -> Poll<io::Result<()>> {
-        let pos = self.pos as u64;
+        let pos = self.pos;
+        let cap = self.cap;
         if offset < 0 {
-            if let Some(new_pos) = pos.checked_sub((-offset) as u64) {
-                *self.project().pos = new_pos as usize;
-                return Poll::Ready(Ok(()));
+            if let Ok(back) = usize::try_from(offset.unsigned_abs()) {
+                if let Some(new_pos) = pos.checked_sub(back) {
+                    *self.project().pos = new_pos;
+                    return Poll::Ready(Ok(()));
+                }
             }
-        } else if let Some(new_pos) = pos.checked_add(offset as u64) {
-            if new_pos <= self.cap as u64 {
-                *self.project().pos = new_pos as usize;
-                return Poll::Ready(Ok(()));
+        } else if let Ok(forward) = usize::try_from(offset) {
+            if let Some(new_pos) = pos.checked_add(forward) {
+                if new_pos <= cap {
+                    *self.project().pos = new_pos;
+                    return Poll::Ready(Ok(()));
+                }
             }
         }
         self.poll_seek(cx, SeekFrom::Current(offset)).map(|res| res.map(|_| ()))

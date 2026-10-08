@@ -91,7 +91,7 @@ impl<T> BiLock<T> {
         let mut waker = None;
         loop {
             let n = self.arc.state.swap(invalid_ptr(1), SeqCst);
-            match n as usize {
+            match n.addr() {
                 // Woohoo, we grabbed the lock!
                 0 => return Poll::Ready(BiLockGuard { bilock: self }),
 
@@ -129,7 +129,7 @@ impl<T> BiLock<T> {
                 // but we're trying to acquire the lock and there's only one
                 // other reference of the lock, so it should be impossible for
                 // that task to ever block itself.
-                Err(n) => panic!("invalid state: {}", n as usize),
+                Err(n) => panic!("invalid state: {}", n.addr()),
             }
         }
     }
@@ -173,7 +173,7 @@ impl<T> BiLock<T> {
 
     fn unlock(&self) {
         let n = self.arc.state.swap(ptr::null_mut(), SeqCst);
-        match n as usize {
+        match n.addr() {
             // we've locked the lock, shouldn't be possible for us to see an
             // unlocked lock.
             0 => panic!("invalid unlocked state"),

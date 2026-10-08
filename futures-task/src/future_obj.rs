@@ -4,6 +4,7 @@ use core::{
     marker::PhantomData,
     mem,
     pin::Pin,
+    ptr,
     task::{Context, Poll},
 };
 
@@ -178,7 +179,7 @@ where
     F: Future<Output = T> + Unpin + 'a,
 {
     fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
-        self as *mut dyn Future<Output = T>
+        ptr::from_mut(self)
     }
 
     unsafe fn drop(_ptr: *mut (dyn Future<Output = T> + 'a)) {}
@@ -186,7 +187,7 @@ where
 
 unsafe impl<'a, T> UnsafeFutureObj<'a, T> for &'a mut (dyn Future<Output = T> + Unpin + 'a) {
     fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
-        self as *mut dyn Future<Output = T>
+        ptr::from_mut(self)
     }
 
     unsafe fn drop(_ptr: *mut (dyn Future<Output = T> + 'a)) {}
@@ -197,7 +198,7 @@ where
     F: Future<Output = T> + 'a,
 {
     fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
-        unsafe { self.get_unchecked_mut() as *mut dyn Future<Output = T> }
+        ptr::from_mut(unsafe { self.get_unchecked_mut() })
     }
 
     unsafe fn drop(_ptr: *mut (dyn Future<Output = T> + 'a)) {}
@@ -205,7 +206,7 @@ where
 
 unsafe impl<'a, T> UnsafeFutureObj<'a, T> for Pin<&'a mut (dyn Future<Output = T> + 'a)> {
     fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
-        unsafe { self.get_unchecked_mut() as *mut dyn Future<Output = T> }
+        ptr::from_mut(unsafe { self.get_unchecked_mut() })
     }
 
     unsafe fn drop(_ptr: *mut (dyn Future<Output = T> + 'a)) {}
@@ -255,7 +256,7 @@ mod if_alloc {
     {
         fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
             let mut this = mem::ManuallyDrop::new(self);
-            unsafe { this.as_mut().get_unchecked_mut() as *mut _ }
+            ptr::from_mut(unsafe { this.as_mut().get_unchecked_mut() })
         }
 
         unsafe fn drop(ptr: *mut (dyn Future<Output = T> + 'a)) {
@@ -266,7 +267,7 @@ mod if_alloc {
     unsafe impl<'a, T: 'a> UnsafeFutureObj<'a, T> for Pin<Box<dyn Future<Output = T> + 'a>> {
         fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
             let mut this = mem::ManuallyDrop::new(self);
-            unsafe { this.as_mut().get_unchecked_mut() as *mut _ }
+            ptr::from_mut(unsafe { this.as_mut().get_unchecked_mut() })
         }
 
         unsafe fn drop(ptr: *mut (dyn Future<Output = T> + 'a)) {
@@ -277,7 +278,7 @@ mod if_alloc {
     unsafe impl<'a, T: 'a> UnsafeFutureObj<'a, T> for Pin<Box<dyn Future<Output = T> + Send + 'a>> {
         fn into_raw(self) -> *mut (dyn Future<Output = T> + 'a) {
             let mut this = mem::ManuallyDrop::new(self);
-            unsafe { this.as_mut().get_unchecked_mut() as *mut _ }
+            ptr::from_mut(unsafe { this.as_mut().get_unchecked_mut() })
         }
 
         unsafe fn drop(ptr: *mut (dyn Future<Output = T> + 'a)) {
